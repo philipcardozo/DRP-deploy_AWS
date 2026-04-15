@@ -279,10 +279,11 @@ def run_trading(paper: bool = True) -> None:
         regime=rf,
         conn=conn,
         t_days=5,
-        iv_entry_threshold=0.02,
-        iv_exit_threshold=0.005,
-        max_hold_days=3.0,
-        max_loss_pct=0.50,
+        iv_entry_threshold=cfg.IV_ENTRY_THRESHOLD,   # 6 vol pts
+        iv_exit_threshold=cfg.IV_EXIT_THRESHOLD,
+        min_mkt_iv=cfg.MIN_MKT_IV,                  # VIX gate: ≥ 18%
+        max_hold_days=cfg.MAX_HOLD_DAYS,             # 5 days (full straddle life)
+        max_loss_pct=cfg.MAX_LOSS_PCT,
         reprice_interval=5.0,
         log_path="trade_log.csv",
         fast_paths=2_000,
@@ -303,9 +304,11 @@ def run_trading(paper: bool = True) -> None:
     monitor.start()
 
     conn.subscribe_equity_ticks("SPY")
-    # Uncomment to subscribe option ticks once you have expiry / strike:
-    # conn.subscribe_option_ticks("SPY", expiry="20250117", strike=585.0, right="C")
-    # conn.subscribe_option_ticks("SPY", expiry="20250117", strike=585.0, right="P")
+    # Subscribe ATM option ticks for real market IV (Modification #3):
+    # Replace expiry and strike with current front-week expiry and ATM strike.
+    # The ConnectionManager feeds market_iv into MarketState from these ticks.
+    # conn.subscribe_option_ticks("SPY", expiry="20260117", strike=cfg.SPOT_PRICE, right="C")
+    # conn.subscribe_option_ticks("SPY", expiry="20260117", strike=cfg.SPOT_PRICE, right="P")
 
     try:
         orch.start()         # blocking until SIGINT

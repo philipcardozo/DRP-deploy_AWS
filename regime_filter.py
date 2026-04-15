@@ -40,8 +40,8 @@ from typing import NamedTuple
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
 import matplotlib.pyplot as plt
+from polygon_client import fetch_close
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import Patch
 from scipy.stats import norm as sp_norm
@@ -287,26 +287,24 @@ class RegimeFilter:
 
     def fetch_data(self, years: int = 5) -> pd.Series:
         """
-        Download `years` of daily SPY closes from Yahoo Finance and
-        compute log-returns.  Stores results in self.log_returns /
-        self.dates.
+        Download `years` of daily closes from Polygon.io and compute
+        log-returns.  Stores results in self.log_returns / self.dates.
+
+        Requires MASSIVE_API_KEY env var (Polygon.io free tier).
         """
         end   = dt.datetime.today()
         start = end - dt.timedelta(days=int(years * 365.25))
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            df = yf.download(self.ticker, start=start, end=end,
-                             auto_adjust=True, progress=False)
+        close = fetch_close(
+            self.ticker,
+            start=start.strftime("%Y-%m-%d"),
+            end=end.strftime("%Y-%m-%d"),
+        )
 
-        if df.empty:
-            raise RuntimeError(f"yfinance returned no data for {self.ticker!r}")
-
-        close = df["Close"].squeeze()
         log_ret = np.log(close / close.shift(1)).dropna()
 
         self.log_returns = log_ret.to_numpy(dtype=np.float64)
-        self.dates = log_ret.index.to_numpy()
+        self.dates       = log_ret.index.to_numpy()
         return log_ret
 
     # ── Fitting (Baum-Welch with restarts) ─────────────────────────

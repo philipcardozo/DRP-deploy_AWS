@@ -379,9 +379,10 @@ class StrategyOrchestrator:
         regime:              RegimeFilter,
         conn:                ConnectionManager,
         t_days:              int   = 5,
-        iv_entry_threshold:  float = 0.02,
+        iv_entry_threshold:  float = 0.06,   # 6 vol pts — roughness premium gate
         iv_exit_threshold:   float = 0.005,
-        max_hold_days:       float = 3.0,
+        min_mkt_iv:          float = 0.18,   # VIX gate: only enter when mkt IV ≥ 18%
+        max_hold_days:       float = 5.0,    # full 5-day straddle life
         max_loss_pct:        float = 0.50,
         max_contracts:       int   = 10,
         reprice_interval:    float = 5.0,
@@ -396,6 +397,7 @@ class StrategyOrchestrator:
         self.t_days             = t_days
         self.iv_entry_threshold = iv_entry_threshold
         self.iv_exit_threshold  = iv_exit_threshold
+        self.min_mkt_iv         = min_mkt_iv
         self.max_hold_days      = max_hold_days
         self.max_loss_pct       = max_loss_pct
         self.max_contracts      = max_contracts
@@ -629,6 +631,13 @@ class StrategyOrchestrator:
         T_ann  = self.t_days / 252.0
         r      = self._fast_engine.r
 
+        # ── Calibrate v0 to current market IV (IBKR options feed) ──
+        # Matches how backtests are run: v0 = market_iv²  so the
+        # rough-vol model reflects current market conditions and the
+        # spread measures the pure roughness premium (H≈0.07 vs H=0.5).
+        if self._market.market_iv and self._market.market_iv > 0:
+            self._fast_engine.v0 = self._market.market_iv ** 2
+
         # ── Monte Carlo model price ──
         try:
             result: OptionResult = self._fast_engine.price_straddle(
@@ -729,8 +738,13 @@ class StrategyOrchestrator:
                        f"{self.iv_exit_threshold*100:.2f} vol pts")
             return
 
-        # ── 5. Entry — Calm + positive spread ────────────────────
+        # ── 5. Entry — Calm + VIX gate + positive spread ─────────
+        mkt_iv_ok = (
+            pr.market_iv is not None
+            and pr.market_iv >= self.min_mkt_iv
+        )
         if (pr.regime_state == CALM
+                and mkt_iv_ok
                 and pr.iv_spread is not None
                 and pr.iv_spread > self.iv_entry_threshold):
 
@@ -740,7 +754,8 @@ class StrategyOrchestrator:
                     reason=f"Spread={pr.iv_spread*100:.2f}vp > "
                            f"{self.iv_entry_threshold*100:.2f}vp  "
                            f"model={pr.model_iv*100:.2f}%  "
-                           f"mkt={pr.market_iv*100:.2f}%")
+                           f"mkt={pr.market_iv*100:.2f}%  "
+                           f"VIX={pr.market_iv*100:.1f}%≥{self.min_mkt_iv*100:.0f}%")
                 return
 
             elif pos.state == PositionState.LONG_VOL:
