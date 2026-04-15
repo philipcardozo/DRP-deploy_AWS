@@ -1,0 +1,63 @@
+# Security — never commit private keys or credentials
+*.pem
+*.key
+.env
+secrets.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Numba JIT cache
+__numba_cache__/
+
+# Strategy output / runtime data
+tick_data.h5
+trade_log.csv
+fills.csv
+heartbeat.log
+validation_report.txt
+*.h5
+*.hdf5
+
+# Plots generated at runtime
+regime_map.png
+convergence_plot.png
+equity_curve.png
+fbm_roughness.png
+transaction_cost_heatmap.png
+*.png
+
+# Test caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+compile.log
+missfont.log

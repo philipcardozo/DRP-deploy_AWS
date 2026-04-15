@@ -1,0 +1,10 @@
+numpy>=1.24
+numba>=0.58
+scipy>=1.11
+pandas>=2.0
+yfinance>=0.2.31
+tables>=3.9
+h5py>=3.10
+matplotlib>=3.8
+ibapi>=9.81.1
+pytest>=7.4
